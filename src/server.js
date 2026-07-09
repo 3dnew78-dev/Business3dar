@@ -76,7 +76,7 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 <style>
   :root{
     --paper:#EDEFF3;
@@ -211,6 +211,22 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
     text-align:center;
     margin-top:10px;
   }
+  #status-log{
+    width:100%;
+    max-width:520px;
+    margin-top:18px;
+    padding:12px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    word-break:break-word;
+    white-space:pre-wrap;
+  }
+  #status-log strong{color:var(--ink);}
   @media (prefers-reduced-motion: reduce){
     .eyebrow .dot{animation:none;}
   }
@@ -251,11 +267,46 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
     <div class="hint">Opens your camera â€” point it at a flat surface</div>
   </div>
 
+  <div id="status-log"><strong>Status:</strong> waiting for model to load...</div>
+
   <script>
     const mv = document.getElementById('mv');
+    const log = document.getElementById('status-log');
+    function logMsg(msg) {
+      log.innerHTML += '<br>' + msg;
+    }
+
     document.getElementById('ar-button').addEventListener('click', () => {
+      logMsg('AR button tapped. canActivateAR = ' + mv.canActivateAR);
       mv.activateAR();
     });
+
+    mv.addEventListener('load', () => {
+      logMsg('<strong>âœ… Model loaded successfully.</strong>');
+    });
+    mv.addEventListener('error', (ev) => {
+      logMsg('<strong>âŒ Model error:</strong> ' + JSON.stringify(ev.detail || ev.type));
+    });
+    mv.addEventListener('ar-status', (ev) => {
+      logMsg('AR status: ' + ev.detail.status);
+    });
+
+    window.addEventListener('error', (ev) => {
+      logMsg('<strong>âŒ Page error:</strong> ' + ev.message);
+    });
+
+    // Fetch the model URL directly too, to separate "can't fetch" from "can't parse".
+    fetch('${modelUrl}').then((r) => {
+      logMsg('Direct fetch of model URL: HTTP ' + r.status + ', ' + r.headers.get('content-type') + ', ' + r.headers.get('content-length') + ' bytes');
+    }).catch((err) => {
+      logMsg('<strong>âŒ Direct fetch failed:</strong> ' + err.message);
+    });
+
+    setTimeout(() => {
+      if (!mv.loaded) {
+        logMsg('âš ï¸ Still not loaded after 8 seconds. modelIsVisible=' + mv.modelIsVisible);
+      }
+    }, 8000);
   </script>
 </body>
 </html>`;
