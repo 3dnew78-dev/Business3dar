@@ -75,151 +75,208 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
 <title>${esc(product.name)} â€” AR view</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  window.ModelViewerElement = window.ModelViewerElement || {};
+  window.ModelViewerElement.meshoptDecoderLocation = 'https://cdn.jsdelivr.net/npm/meshoptimizer@1.2.0/meshopt_decoder.mjs';
+</script>
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 <style>
   :root{
-    --paper:#EDEFF3;
-    --paper-line:#D3D8E0;
-    --ink:#161B2E;
-    --ink-soft:#5B6478;
+    --bg:#F3F4F8;
+    --card:#FFFFFF;
+    --ink:#14162B;
+    --ink-soft:#6B7280;
+    --border:#ECEDF3;
     --accent:#5B5FEF;
-    --accent-ink:#FFFFFF;
-    --price:#D9861C;
+    --accent-soft:#EEEEFD;
+    --price:#14162B;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:'Inter',system-ui,sans-serif;
-    background:
-      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/100% 28px,
-      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 100%,
-      var(--paper);
-    background-attachment:fixed;
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
     color:var(--ink);
     min-height:100vh;
     display:flex;
     flex-direction:column;
     align-items:center;
-    padding:20px 16px 48px;
+    padding:20px 14px 40px;
   }
-  .topbar{
+  .card{
     width:100%;
-    max-width:520px;
+    max-width:460px;
+    background:var(--card);
+    border-radius:24px;
+    padding:16px;
+    box-shadow:0 24px 48px -28px rgba(20,22,43,0.22);
+  }
+  .card-header{
     display:flex;
     align-items:center;
+    justify-content:space-between;
     gap:10px;
-    margin-bottom:18px;
+    margin-bottom:14px;
   }
-  .topbar img{
-    width:32px;height:32px;border-radius:8px;object-fit:cover;
-    border:1px solid var(--paper-line);
+  .brand{display:flex; align-items:center; gap:10px; min-width:0;}
+  .brand img{
+    width:40px;height:40px;border-radius:11px;object-fit:cover;
+    border:1px solid var(--border);
     background:#fff;
+    flex-shrink:0;
   }
-  .topbar .company-name{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    letter-spacing:0.06em;
+  .brand-text{min-width:0;}
+  .brand-name{
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.02em;
     text-transform:uppercase;
-    color:var(--ink-soft);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
-  .viewer-frame{
+  .brand-tag{
+    font-size:12px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:220px;
+  }
+  #share-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:38px;height:38px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--ink);
+    cursor:pointer;
+    flex-shrink:0;
+    position:relative;
+  }
+  #share-btn[data-copied]::after{
+    content:'Copied';
+    position:absolute;
+    top:44px; right:0;
+    background:var(--ink);
+    color:#fff;
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+  }
+  .hero{
     position:relative;
     width:100%;
-    max-width:520px;
-    aspect-ratio:1/1;
-    background:#fff;
+    aspect-ratio:4/3;
+    border-radius:16px;
+    overflow:hidden;
+    background:#fafafb;
   }
-  .bracket{
+  .ar-badge{
     position:absolute;
-    width:22px;height:22px;
-    border:2px solid var(--accent);
+    top:12px; left:12px;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    background:var(--accent);
+    color:#fff;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    padding:6px 10px;
+    border-radius:999px;
   }
-  .bracket.tl{top:-2px;left:-2px;border-right:none;border-bottom:none;}
-  .bracket.tr{top:-2px;right:-2px;border-left:none;border-bottom:none;}
-  .bracket.bl{bottom:-2px;left:-2px;border-right:none;border-top:none;}
-  .bracket.br{bottom:-2px;right:-2px;border-left:none;border-top:none;}
   model-viewer{
+    position:relative;
     width:100%;
     height:100%;
-    background:#fff;
+    background:#fafafb;
     --poster-color:transparent;
   }
-  .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
+  .ar-fab{
+    position:absolute;
+    bottom:12px; right:12px;
+    width:44px;height:44px;
+    border-radius:50%;
+    border:none;
+    background:#fff;
     color:var(--accent);
     display:flex;
     align-items:center;
-    gap:6px;
-    margin:14px 0 4px;
+    justify-content:center;
+    box-shadow:0 6px 16px -4px rgba(20,22,43,0.35);
+    cursor:pointer;
   }
-  .eyebrow .dot{
-    width:6px;height:6px;border-radius:50%;
-    background:var(--accent);
-    animation:pulse 1.6s ease-in-out infinite;
-  }
-  @keyframes pulse{
-    0%,100%{opacity:1;} 50%{opacity:0.25;}
-  }
-  .panel{
-    width:100%;
-    max-width:520px;
+  .info{padding:18px 4px 4px;}
+  .title-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
   }
   h1{
-    font-family:'Space Grotesk',sans-serif;
-    font-size:28px;
+    font-size:22px;
     font-weight:700;
-    margin:2px 0 8px;
-    line-height:1.15;
+    margin:0;
+    line-height:1.25;
   }
   .price{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:18px;
+    font-size:20px;
+    font-weight:700;
     color:var(--price);
-    margin:0 0 14px;
+    white-space:nowrap;
   }
   .description{
-    font-size:15px;
+    font-size:14px;
     line-height:1.55;
     color:var(--ink-soft);
-    margin:0 0 22px;
+    margin:8px 0 20px;
   }
   #ar-button{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
+    gap:10px;
     width:100%;
-    padding:14px 18px;
+    padding:14px 16px;
     background:var(--accent);
-    color:var(--accent-ink);
+    color:#fff;
     border:none;
-    border-radius:10px;
-    font-family:'Space Grotesk',sans-serif;
-    font-size:15px;
-    font-weight:700;
+    border-radius:14px;
     cursor:pointer;
   }
+  #ar-button .ar-button-text{text-align:left;}
+  #ar-button strong{display:block; font-size:15px; font-weight:700;}
+  #ar-button small{display:block; font-size:12px; font-weight:400; opacity:0.85; margin-top:1px;}
   #ar-button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
-  .hint{
-    font-family:'IBM Plex Mono',monospace;
+  .footer-brand{
+    margin-top:16px;
     font-size:11px;
     color:var(--ink-soft);
     text-align:center;
-    margin-top:10px;
+  }
+  details{
+    width:100%;
+    max-width:460px;
+    margin-top:14px;
+  }
+  summary{
+    font-size:12px;
+    color:var(--ink-soft);
+    cursor:pointer;
   }
   #status-log{
-    width:100%;
-    max-width:520px;
-    margin-top:18px;
+    margin-top:8px;
     padding:12px;
     background:#fff;
-    border:1px solid var(--paper-line);
-    border-radius:8px;
-    font-family:'IBM Plex Mono',monospace;
+    border:1px solid var(--border);
+    border-radius:10px;
+    font-family:ui-monospace,'SF Mono',monospace;
     font-size:11px;
     line-height:1.6;
     color:var(--ink-soft);
@@ -227,47 +284,63 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
     white-space:pre-wrap;
   }
   #status-log strong{color:var(--ink);}
-  @media (prefers-reduced-motion: reduce){
-    .eyebrow .dot{animation:none;}
-  }
 </style>
 </head>
 <body>
 
-  <div class="topbar">
-    ${logoUrl ? `<img src="${logoUrl}" alt="${companyName} logo" />` : ''}
-    <span class="company-name">${companyName}</span>
+  <div class="card">
+    <div class="card-header">
+      <div class="brand">
+        ${logoUrl ? `<img src="${logoUrl}" alt="${companyName} logo" />` : ''}
+        <div class="brand-text">
+          <div class="brand-name">${companyName}</div>
+          ${company && company.description ? `<div class="brand-tag">${esc(company.description)}</div>` : ''}
+        </div>
+      </div>
+      <button id="share-btn" aria-label="Share">${arIcon(18)}</button>
+    </div>
+
+    <div class="hero">
+      <div class="ar-badge">${arIcon(13)} AR READY</div>
+      <model-viewer
+        id="mv"
+        src="${modelUrl}"
+        ${usdzUrl ? `ios-src="${usdzUrl}"` : ''}
+        poster="${posterUrl}"
+        alt="${esc(product.name)}"
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        camera-controls
+        shadow-intensity="1"
+        touch-action="pan-y"
+      >
+        <button slot="ar-button" class="ar-fab" aria-label="View in AR">${arIcon(20)}</button>
+      </model-viewer>
+    </div>
+
+    <div class="info">
+      <div class="title-row">
+        <h1>${esc(product.name)}</h1>
+        <div class="price">${Number(product.price).toLocaleString()}</div>
+      </div>
+      <p class="description">${esc(product.description)}</p>
+
+      <button id="ar-button">
+        ${arIcon(20)}
+        <span class="ar-button-text">
+          <strong>View in your space</strong>
+          <small>Point your camera to see it in your room</small>
+        </span>
+      </button>
+    </div>
   </div>
 
-  <div class="viewer-frame">
-    <div class="bracket tl"></div>
-    <div class="bracket tr"></div>
-    <div class="bracket bl"></div>
-    <div class="bracket br"></div>
-    <model-viewer
-      id="mv"
-      src="${modelUrl}"
-      ${usdzUrl ? `ios-src="${usdzUrl}"` : ''}
-      poster="${posterUrl}"
-      alt="${esc(product.name)}"
-      ar
-      ar-modes="webxr scene-viewer quick-look"
-      camera-controls
-      shadow-intensity="1"
-      touch-action="pan-y"
-    ></model-viewer>
-  </div>
+  <div class="footer-brand">Powered by View3D</div>
 
-  <div class="panel">
-    <div class="eyebrow"><span class="dot"></span>AR READY</div>
-    <h1>${esc(product.name)}</h1>
-    <div class="price">${Number(product.price).toLocaleString()}</div>
-    <p class="description">${esc(product.description)}</p>
-    <button id="ar-button">View in your space</button>
-    <div class="hint">Opens your camera â€” point it at a flat surface</div>
-  </div>
-
-  <div id="status-log"><strong>Status:</strong> waiting for model to load...</div>
+  <details>
+    <summary>Diagnostics (for testing)</summary>
+    <div id="status-log"><strong>Status:</strong> waiting for model to load...</div>
+  </details>
 
   <script>
     const mv = document.getElementById('mv');
@@ -281,11 +354,30 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
       mv.activateAR();
     });
 
+    document.getElementById('share-btn').addEventListener('click', async () => {
+      const shareData = { title: '${esc(product.name)}', text: '${esc(product.description)}', url: location.href };
+      if (navigator.share) {
+        try { await navigator.share(shareData); } catch (e) {}
+      } else if (navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(location.href);
+          const btn = document.getElementById('share-btn');
+          btn.setAttribute('data-copied', '1');
+          setTimeout(() => btn.removeAttribute('data-copied'), 1500);
+        } catch (e) {}
+      }
+    });
+
     mv.addEventListener('load', () => {
       logMsg('<strong>âœ… Model loaded successfully.</strong>');
     });
     mv.addEventListener('error', (ev) => {
-      logMsg('<strong>âŒ Model error:</strong> ' + JSON.stringify(ev.detail || ev.type));
+      const d = ev.detail || {};
+      let errText = 'no further detail';
+      if (d.sourceError) {
+        errText = (d.sourceError.name || 'Error') + ': ' + (d.sourceError.message || String(d.sourceError));
+      }
+      logMsg('<strong>âŒ Model error:</strong> type=' + d.type + ' â€” ' + errText);
     });
     mv.addEventListener('ar-status', (ev) => {
       logMsg('AR status: ' + ev.detail.status);
@@ -298,6 +390,26 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
     // Fetch the model URL directly too, to separate "can't fetch" from "can't parse".
     fetch('${modelUrl}').then((r) => {
       logMsg('Direct fetch of model URL: HTTP ' + r.status + ', ' + r.headers.get('content-type') + ', ' + r.headers.get('content-length') + ' bytes');
+      return r.arrayBuffer();
+    }).then((buf) => {
+      try {
+        const dv = new DataView(buf);
+        const magic = dv.getUint32(0, true);
+        if (magic !== 0x46546c67) {
+          logMsg('<strong>âš ï¸ Not a valid GLB header</strong> (magic bytes don\\'t match "glTF").');
+          return;
+        }
+        const chunkLength = dv.getUint32(12, true);
+        const chunkType = dv.getUint32(16, true);
+        if (chunkType === 0x4e4f534a) { // 'JSON'
+          const jsonBytes = new Uint8Array(buf, 20, chunkLength);
+          const json = JSON.parse(new TextDecoder('utf-8').decode(jsonBytes));
+          logMsg('<strong>Extensions used:</strong> ' + JSON.stringify(json.extensionsUsed || []));
+          logMsg('<strong>Extensions required:</strong> ' + JSON.stringify(json.extensionsRequired || []));
+        }
+      } catch (e) {
+        logMsg('GLB header parse check failed: ' + e.message);
+      }
     }).catch((err) => {
       logMsg('<strong>âŒ Direct fetch failed:</strong> ' + err.message);
     });
@@ -310,6 +422,13 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
   </script>
 </body>
 </html>`;
+}
+
+function arIcon(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+    <path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8 10.3 12 8l4 2.3v5.4L12 18l-4-2.3v-5.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>`;
 }
 
 module.exports = { buildServer };
