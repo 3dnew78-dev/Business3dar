@@ -2,6 +2,9 @@ const { Telegraf, Scenes, session, Markup, Input } = require('telegraf');
 const db = require('./db');
 const { downloadTelegramFile, guessMimetypeFromFilename } = require('./telegramFile');
 
+// Telegram's Bot API hard limit: bots cannot download files larger than 20MB.
+const MAX_TELEGRAM_FILE_BYTES = 20 * 1024 * 1024;
+
 function buildBot({ token, publicUrl }) {
   const bot = new Telegraf(token);
   let botUsername = null;
@@ -27,6 +30,14 @@ function buildBot({ token, publicUrl }) {
     const lower = (doc.file_name || '').toLowerCase();
     if (!exts.some((e) => lower.endsWith(e))) {
       await ctx.reply(`That file doesn't have the right extension. Please send a ${exts.join(' or ')} file.`);
+      return null;
+    }
+    if (doc.file_size && doc.file_size > MAX_TELEGRAM_FILE_BYTES) {
+      const mb = (doc.file_size / (1024 * 1024)).toFixed(1);
+      await ctx.reply(
+        `That file is ${mb}MB, but Telegram only allows bots to download files up to 20MB. ` +
+          `Please compress it (lower texture resolution or Draco-compress the geometry) and send it again.`
+      );
       return null;
     }
     return doc;
@@ -73,13 +84,13 @@ function buildBot({ token, publicUrl }) {
       });
 
       await ctx.reply(
-        `✅ ${company.name} is set up.\n\n` +
+        `âœ… ${company.name} is set up.\n\n` +
           `Now let's connect the Telegram channel where your products will be posted:\n\n` +
           `1. Create a new Telegram channel (public or private).\n` +
           `2. Add @${botUsername} as an *administrator* of that channel, with permission to post messages.\n` +
           `3. Then come back here and either:\n` +
-          `   • forward any message from that channel to me, or\n` +
-          `   • send me the channel's @username\n\n` +
+          `   â€¢ forward any message from that channel to me, or\n` +
+          `   â€¢ send me the channel's @username\n\n` +
           `I'll verify I'm an admin and link it automatically.`,
         { parse_mode: 'Markdown' }
       );
@@ -136,7 +147,16 @@ function buildBot({ token, publicUrl }) {
       const doc = await requireDocumentWithExt(ctx, ['.glb']);
       if (!doc) return;
       await ctx.reply('Downloading 3D model... this can take a moment for larger files.');
-      const buffer = await downloadTelegramFile(ctx.telegram, doc.file_id);
+      let buffer;
+      try {
+        buffer = await downloadTelegramFile(ctx.telegram, doc.file_id);
+      } catch (err) {
+        if (err.description && err.description.includes('file is too big')) {
+          await ctx.reply('That file is too large for Telegram to hand to a bot (20MB limit). Please compress it and send it again.');
+          return;
+        }
+        throw err;
+      }
       ctx.wizard.state.modelMediaId = await db.saveMedia(
         buffer,
         guessMimetypeFromFilename(doc.file_name),
@@ -157,7 +177,16 @@ function buildBot({ token, publicUrl }) {
       const doc = await requireDocumentWithExt(ctx, ['.usdz']);
       if (!doc) return;
       await ctx.reply('Downloading .usdz file...');
-      const buffer = await downloadTelegramFile(ctx.telegram, doc.file_id);
+      let buffer;
+      try {
+        buffer = await downloadTelegramFile(ctx.telegram, doc.file_id);
+      } catch (err) {
+        if (err.description && err.description.includes('file is too big')) {
+          await ctx.reply('That file is too large for Telegram to hand to a bot (20MB limit). Please compress it and send it again, or tap Skip.');
+          return;
+        }
+        throw err;
+      }
       ctx.wizard.state.usdzMediaId = await db.saveMedia(buffer, 'model/vnd.usdz+zip', doc.file_name);
       return finishProduct(ctx);
     }
@@ -182,7 +211,7 @@ function buildBot({ token, publicUrl }) {
     });
 
     await postProductToChannel(ctx, company, product);
-    await ctx.reply(`✅ "${product.name}" was posted to your channel.`);
+    await ctx.reply(`âœ… "${product.name}" was posted to your channel.`);
     return ctx.scene.leave();
   }
 
@@ -192,7 +221,7 @@ function buildBot({ token, publicUrl }) {
     const caption =
       `*${escapeMarkdown(product.name)}*\n` +
       `${escapeMarkdown(product.description)}\n\n` +
-      `💰 Price: ${product.price}`;
+      `ðŸ’° Price: ${product.price}`;
 
     const message = await ctx.telegram.sendPhoto(
       company.channel_id,
@@ -201,7 +230,7 @@ function buildBot({ token, publicUrl }) {
         caption,
         parse_mode: 'Markdown',
         reply_markup: Markup.inlineKeyboard([
-          Markup.button.url('View in your space 🔍', viewUrl),
+          Markup.button.url('View in your space ðŸ”', viewUrl),
         ]).reply_markup,
       }
     );
@@ -257,7 +286,7 @@ function buildBot({ token, publicUrl }) {
     if (products.length === 0) {
       return ctx.reply('No products yet. Use /addproduct to post your first one.');
     }
-    const lines = products.map((p) => `• ${p.name} — ${p.price} — ${publicUrl}/view/${p.id}`);
+    const lines = products.map((p) => `â€¢ ${p.name} â€” ${p.price} â€” ${publicUrl}/view/${p.id}`);
     return ctx.reply(lines.join('\n'));
   });
 
@@ -282,11 +311,19 @@ function buildBot({ token, publicUrl }) {
     let channelIdentifier = null;
     if (ctx.message.forward_from_chat && ctx.message.forward_from_chat.type === 'channel') {
       channelIdentifier = ctx.message.forward_from_chat.id;
-    } else if (ctx.message.text && ctx.message.text.startsWith('@')) {
-      channelIdentifier = ctx.message.text.trim();
-    } else {
+    } else if (ctx.message.text) {
+      const text = ctx.message.text.trim();
+      const tMeMatch = text.match(/(?:https?:\/\/)?t\.me\/([A-Za-z0-9_]{5,32})/i);
+      if (text.startsWith('@')) {
+        channelIdentifier = text;
+      } else if (tMeMatch) {
+        channelIdentifier = '@' + tMeMatch[1];
+      }
+    }
+
+    if (!channelIdentifier) {
       await ctx.reply(
-        'To link your channel, forward a message from it here, or send its @username.'
+        'To link your channel, forward a message from it here, or send its @username or link.'
       );
       return;
     }
@@ -312,7 +349,7 @@ function buildBot({ token, publicUrl }) {
 
       await db.linkChannel(company.id, chat.id, chat.username || null);
       await ctx.reply(
-        `✅ Linked to ${chat.title}! You're all set.\n\n` +
+        `âœ… Linked to ${chat.title}! You're all set.\n\n` +
           `Use /addproduct whenever you want to post something new.`
       );
     } catch (err) {
