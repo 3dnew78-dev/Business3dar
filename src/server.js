@@ -16,6 +16,20 @@ function buildServer() {
     res.send(media.data);
   });
 
+  app.get('/view/:id/debug', async (req, res) => {
+    const product = await db.getProductById(req.params.id);
+    if (!product) return res.status(404).send('Product not found');
+    res.send(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Debug: ${esc(product.name)}</title></head>
+<body style="font-family:sans-serif;padding:16px;">
+  <h2>${esc(product.name)}</h2>
+  <p>Product ID: ${product.id}</p>
+  <p><a href="/media/${product.image_media_id}">ðŸ“· Download product image</a></p>
+  <p><a href="/media/${product.model_media_id}">ðŸ“¦ Download .glb model file</a></p>
+  ${product.usdz_media_id ? `<p><a href="/media/${product.usdz_media_id}">ðŸŽ Download .usdz file</a></p>` : '<p>No .usdz uploaded.</p>'}
+</body></html>`);
+  });
+
   app.get('/view/:id', async (req, res) => {
     const product = await db.getProductById(req.params.id);
     if (!product) return res.status(404).send('Product not found');
@@ -45,7 +59,7 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>${esc(product.name)} — AR view</title>
+<title>${esc(product.name)} â€” AR view</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -221,7 +235,7 @@ function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUr
     <div class="price">${Number(product.price).toLocaleString()}</div>
     <p class="description">${esc(product.description)}</p>
     <button id="ar-button">View in your space</button>
-    <div class="hint">Opens your camera — point it at a flat surface</div>
+    <div class="hint">Opens your camera â€” point it at a flat surface</div>
   </div>
 
   <script>
