@@ -11,7 +11,9 @@ function buildServer() {
   app.get('/media/:id', async (req, res) => {
     const media = await db.getMedia(req.params.id);
     if (!media) return res.status(404).send('Not found');
+    const filename = media.filename || fallbackFilename(media.mimetype);
     res.setHeader('Content-Type', media.mimetype);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.send(media.data);
   });
@@ -24,9 +26,9 @@ function buildServer() {
 <body style="font-family:sans-serif;padding:16px;">
   <h2>${esc(product.name)}</h2>
   <p>Product ID: ${product.id}</p>
-  <p><a href="/media/${product.image_media_id}">ðŸ“· Download product image</a></p>
-  <p><a href="/media/${product.model_media_id}">ðŸ“¦ Download .glb model file</a></p>
-  ${product.usdz_media_id ? `<p><a href="/media/${product.usdz_media_id}">ðŸŽ Download .usdz file</a></p>` : '<p>No .usdz uploaded.</p>'}
+  <p><a href="/media/${product.image_media_id}" download="product-image.jpg">ðŸ“· Download product image</a></p>
+  <p><a href="/media/${product.model_media_id}" download="product-model.glb">ðŸ“¦ Download .glb model file</a></p>
+  ${product.usdz_media_id ? `<p><a href="/media/${product.usdz_media_id}" download="product-model.usdz">ðŸŽ Download .usdz file</a></p>` : '<p>No .usdz uploaded.</p>'}
 </body></html>`);
   });
 
@@ -50,6 +52,17 @@ function esc(str = '') {
   return String(str).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+function fallbackFilename(mimetype) {
+  const map = {
+    'model/gltf-binary': 'model.glb',
+    'model/gltf+json': 'model.gltf',
+    'model/vnd.usdz+zip': 'model.usdz',
+    'image/jpeg': 'image.jpg',
+    'image/png': 'image.png',
+  };
+  return map[mimetype] || 'file';
 }
 
 function renderViewPage({ product, company, modelUrl, usdzUrl, posterUrl, logoUrl }) {
